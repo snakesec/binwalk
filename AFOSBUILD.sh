@@ -13,7 +13,7 @@ else
   exit 1
 fi
 
-apt install -y 7zip zstd srecord tar unzip sleuthkit cabextract curl wget git lz4 lzop unrar unyaffs build-essential clang liblzo2-dev libucl-dev liblz4-dev libbz2-dev zlib1g-dev libfontconfig1-dev liblzma-dev libssl-dev 7zip-standalone cpio device-tree-compiler
+apt install -y 7zip zstd srecord tar unzip sleuthkit cabextract curl wget git lz4 lzop unrar unyaffs build-essential clang liblzo2-dev libucl-dev liblz4-dev libbz2-dev zlib1g-dev libfontconfig1-dev liblzma-dev libssl-dev cpio device-tree-compiler
 
 if [ $? -eq 0 ]
 then
