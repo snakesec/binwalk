@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source /opt/ANDRAX/binwalk/bin/activate
+
+/opt/ANDRAX/binwalk/package/binwalk "$@"
