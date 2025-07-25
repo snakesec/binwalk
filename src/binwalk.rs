@@ -146,8 +146,7 @@ impl Binwalk {
             match path::absolute(&target_file) {
                 Err(_) => {
                     return Err(BinwalkError::new(&format!(
-                        "Failed to get absolute path for '{}'",
-                        target_file
+                        "Failed to get absolute path for '{target_file}'"
                     )));
                 }
                 Ok(abspath) => {
@@ -161,8 +160,7 @@ impl Binwalk {
                 match path::absolute(&extraction_directory) {
                     Err(_) => {
                         return Err(BinwalkError::new(&format!(
-                            "Failed to get absolute path for '{}'",
-                            extraction_directory
+                            "Failed to get absolute path for '{extraction_directory}'"
                         )));
                     }
                     Ok(abspath) => {
@@ -179,8 +177,7 @@ impl Binwalk {
                 ) {
                     Err(e) => {
                         return Err(BinwalkError::new(&format!(
-                            "Failed to initialize extraction directory: {}",
-                            e
+                            "Failed to initialize extraction directory: {e}"
                         )));
                     }
                     Ok(new_target_file_path) => {
@@ -340,7 +337,7 @@ impl Binwalk {
             // Update the previous valid offset in praparation for the next loop iteration
             previous_valid_offset = Some(next_valid_offset);
 
-            debug!("Continuing scan from offset {:#X}", next_valid_offset);
+            debug!("Continuing scan from offset {next_valid_offset:#X}");
 
             /*
              * Run a new AhoCorasick scan starting at the next valid offset in the file data.
@@ -450,7 +447,10 @@ impl Binwalk {
 
                 // If this file map entry and the conflicting entry do not have the same confidence level, default to the one with highest confidence
                 if this_signature.confidence != previous_signature.confidence {
-                    debug!("Conflicting signatures at offset {:#X}; defaulting to the signature with highest confidence", this_signature.offset);
+                    debug!(
+                        "Conflicting signatures at offset {:#X}; defaulting to the signature with highest confidence",
+                        this_signature.offset
+                    );
 
                     // If this signature is higher confidence, invalidate the previous signature
                     if this_signature.confidence > previous_signature.confidence {
@@ -466,7 +466,10 @@ impl Binwalk {
 
                 // Conflicting signatures have identical confidence levels; defer to the previously vetted signature
                 } else {
-                    debug!("Conflicting signatures at offset {:#X} with the same confidence; first come, first served", this_signature.offset);
+                    debug!(
+                        "Conflicting signatures at offset {:#X} with the same confidence; first come, first served",
+                        this_signature.offset
+                    );
                     file_map.remove(i);
                     index_adjustment += 1;
                     continue;
@@ -727,7 +730,7 @@ impl Binwalk {
         };
 
         // Scan file data for signatures
-        debug!("Analysis start: {}", file_path);
+        debug!("Analysis start: {file_path}");
         results.file_map = self.scan(file_data);
 
         // Only extract if told to, and if there were some signatures found in this file
@@ -740,7 +743,7 @@ impl Binwalk {
             results.extractions = self.extract(file_data, &file_path, &results.file_map);
         }
 
-        debug!("Analysis end: {}", file_path);
+        debug!("Analysis end: {file_path}");
 
         results
     }
@@ -791,7 +794,7 @@ impl Binwalk {
 
         let file_data = match read_file(&file_path) {
             Err(_) => {
-                error!("Failed to read data from {}", file_path);
+                error!("Failed to read data from {file_path}");
                 b"".to_vec()
             }
             Ok(data) => data,
@@ -809,13 +812,10 @@ fn init_extraction_directory(
     // Create the output directory, equivalent of mkdir -p
     match fs::create_dir_all(extraction_directory) {
         Ok(_) => {
-            debug!("Created base output directory: '{}'", extraction_directory);
+            debug!("Created base output directory: '{extraction_directory}'");
         }
         Err(e) => {
-            error!(
-                "Failed to create base output directory '{}': {}",
-                extraction_directory, e
-            );
+            error!("Failed to create base output directory '{extraction_directory}': {e}");
             return Err(e);
         }
     }
@@ -824,7 +824,7 @@ fn init_extraction_directory(
     let target_path = path::Path::new(&target_file);
 
     // Build a symlink path to the target file in the extraction directory
-    let symlink_target_path_str = format!(
+    let link_target_path_str = format!(
         "{}{}{}",
         extraction_directory,
         path::MAIN_SEPARATOR,
@@ -832,23 +832,27 @@ fn init_extraction_directory(
     );
 
     // Create a path for the symlink target path
-    let symlink_path = path::Path::new(&symlink_target_path_str);
+    let link_path = path::Path::new(&link_target_path_str);
+
+    if link_path.exists() {
+        return Ok(link_target_path_str);
+    }
 
     debug!(
         "Creating symlink from {} -> {}",
-        symlink_path.display(),
+        link_path.display(),
         target_path.display()
     );
 
     // Create a symlink from inside the extraction directory to the specified target file
     #[cfg(unix)]
     {
-        match unix::fs::symlink(target_path, symlink_path) {
-            Ok(_) => Ok(symlink_target_path_str),
+        match unix::fs::symlink(target_path, link_path) {
+            Ok(_) => Ok(link_target_path_str),
             Err(e) => {
                 error!(
                     "Failed to create symlink {} -> {}: {}",
-                    symlink_path.display(),
+                    link_path.display(),
                     target_path.display(),
                     e
                 );
@@ -858,14 +862,14 @@ fn init_extraction_directory(
     }
     #[cfg(windows)]
     {
-        match windows::fs::symlink_file(target_path, symlink_path) {
+        match std::fs::hard_link(target_path, link_path) {
             Ok(_) => {
-                return Ok(symlink_target_path_str);
+                return Ok(link_target_path_str);
             }
             Err(e) => {
                 error!(
-                    "Failed to create symlink {} -> {}: {}",
-                    symlink_path.display(),
+                    "Failed to create hardlink {} -> {}: {}",
+                    link_path.display(),
                     target_path.display(),
                     e
                 );

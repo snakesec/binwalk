@@ -3,6 +3,7 @@ use log::{debug, error, info};
 use std::collections::VecDeque;
 use std::panic;
 use std::process;
+use std::process::ExitCode;
 use std::sync::mpsc;
 use std::thread;
 use std::time;
@@ -19,7 +20,7 @@ mod magic;
 mod signatures;
 mod structures;
 
-fn main() {
+fn main() -> ExitCode {
     // File name used when reading from stdin
     const STDIN: &str = "stdin";
 
@@ -58,7 +59,7 @@ fn main() {
     // If --list was specified, just display a list of signatures and return
     if cliargs.list {
         display::print_signature_list(cliargs.quiet, &magic::patterns());
-        return;
+        return ExitCode::SUCCESS;
     }
 
     // Set a dummy file name when reading from stdin
@@ -84,7 +85,7 @@ fn main() {
             panic!("Entropy analysis failed!");
         }
 
-        return;
+        return ExitCode::SUCCESS;
     }
 
     // If extraction or data carving was requested, we need to initialize the output directory
@@ -102,7 +103,8 @@ fn main() {
         cliargs.search_all,
     ) {
         Err(e) => {
-            panic!("Binwalk initialization failed: {}", e.message);
+            error!("Binwalk initialization failed: {}", e.message);
+            return ExitCode::FAILURE;
         }
         Ok(bw) => bw,
     };
@@ -126,10 +128,7 @@ fn main() {
     }
 
     // Initialize thread pool
-    debug!(
-        "Initializing thread pool with {} workers",
-        available_workers
-    );
+    debug!("Initializing thread pool with {available_workers} workers");
     let workers = ThreadPool::new(available_workers);
     let (worker_tx, worker_rx) = mpsc::channel();
 
@@ -248,6 +247,8 @@ fn main() {
         binwalker.signature_count,
         binwalker.pattern_count,
     );
+
+    ExitCode::SUCCESS
 }
 
 /// Returns true if the specified results should be displayed to screen
@@ -287,7 +288,7 @@ fn spawn_worker(
         // Read in file data
         let file_data = match common::read_input(&target_file, stdin) {
             Err(_) => {
-                error!("Failed to read {} data", target_file);
+                error!("Failed to read {target_file} data");
                 b"".to_vec()
             }
             Ok(data) => data,
@@ -299,10 +300,7 @@ fn spawn_worker(
         // If data carving was requested as part of extraction, carve analysis results to disk
         if do_carve {
             let carve_count = carve_file_map(&file_data, &results);
-            info!(
-                "Carved {} data blocks to disk from {}",
-                carve_count, target_file
-            );
+            info!("Carved {carve_count} data blocks to disk from {target_file}");
         }
 
         // Report file results back to main thread
@@ -380,9 +378,9 @@ fn carve_file_data_to_disk(
     let chroot = extractors::common::Chroot::new(None);
 
     // Carved file path will be: <source file path>_<offset>_<name>.raw
-    let carved_file_path = format!("{}_{}_{}.raw", source_file_path, offset, name,);
+    let carved_file_path = format!("{source_file_path}_{offset}_{name}.raw",);
 
-    debug!("Carving {}", carved_file_path);
+    debug!("Carving {carved_file_path}");
 
     // Carve the data to disk
     if !chroot.carve_file(&carved_file_path, file_data, offset, size) {

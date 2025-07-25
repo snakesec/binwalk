@@ -985,7 +985,7 @@ pub fn patterns() -> Vec<signatures::common::Signature> {
             magic: signatures::apfs::apfs_magic(),
             parser: signatures::apfs::apfs_parser,
             description: signatures::apfs::DESCRIPTION.to_string(),
-            extractor: Some(extractors::apfs::apfs_extractor()),
+            extractor: Some(extractors::sevenzip::sevenzip_extractor()),
         },
         // BTRFS
         signatures::common::Signature {
@@ -1217,6 +1217,17 @@ pub fn patterns() -> Vec<signatures::common::Signature> {
             parser: signatures::arj::arj_parser,
             description: signatures::arj::DESCRIPTION.to_string(),
             extractor: Some(extractors::sevenzip::sevenzip_extractor()),
+        },
+        // MD5 hashes
+        signatures::common::Signature {
+            name: "md5".to_string(),
+            short: false,
+            magic_offset: 0,
+            always_display: false,
+            magic: signatures::hashes::md5_magic(),
+            parser: signatures::hashes::md5_parser,
+            description: signatures::hashes::MD5_DESCRIPTION.to_string(),
+            extractor: None,
         },
     ];
 
