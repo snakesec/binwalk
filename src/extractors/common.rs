@@ -272,14 +272,11 @@ impl Chroot {
                     return true;
                 }
                 Err(e) => {
-                    error!("Failed to write data to {}: {}", safe_file_path, e);
+                    error!("Failed to write data to {safe_file_path}: {e}");
                 }
             }
         } else {
-            error!(
-                "Failed to create file {}: path already exists",
-                safe_file_path
-            );
+            error!("Failed to create file {safe_file_path}: path already exists");
         }
 
         false
@@ -344,7 +341,7 @@ impl Chroot {
         major: usize,
         minor: usize,
     ) -> bool {
-        let device_file_contents: String = format!("{} {} {}", device_type, major, minor);
+        let device_file_contents: String = format!("{device_type} {major} {minor}");
         self.create_file(file_path, &device_file_contents.clone().into_bytes())
     }
 
@@ -519,14 +516,11 @@ impl Chroot {
                 .open(safe_file_path.clone())
             {
                 Err(e) => {
-                    error!(
-                        "Failed to open file '{}' for appending: {}",
-                        safe_file_path, e
-                    );
+                    error!("Failed to open file '{safe_file_path}' for appending: {e}");
                 }
                 Ok(mut fp) => match fp.write(data) {
                     Err(e) => {
-                        error!("Failed to append to file '{}': {}", safe_file_path, e);
+                        error!("Failed to append to file '{safe_file_path}': {e}");
                     }
                     Ok(_) => {
                         return true;
@@ -534,7 +528,7 @@ impl Chroot {
                 },
             }
         } else {
-            error!("Attempted to append data to a symlink: {}", safe_file_path);
+            error!("Attempted to append data to a symlink: {safe_file_path}");
         }
 
         false
@@ -571,8 +565,55 @@ impl Chroot {
                 return true;
             }
             Err(e) => {
-                error!("Failed to create output directory {}: {}", safe_dir_path, e);
+                error!("Failed to create output directory {safe_dir_path}: {e}");
             }
+        }
+
+        false
+    }
+
+    /// Delete a directory in the chroot directory.
+    ///
+    /// Equivalent to rm -rf.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use binwalk::extractors::common::Chroot;
+    ///
+    /// let chroot_dir = std::path::Path::new("tests")
+    ///     .join("binwalk_unit_tests")
+    ///     .display()
+    ///     .to_string();
+    ///
+    /// let dir_name = "my_directory";
+    ///
+    /// # std::fs::remove_dir_all(&chroot_dir);
+    /// let chroot = Chroot::new(Some(&chroot_dir));
+    ///
+    /// assert_eq!(chroot.create_directory(dir_name), true);
+    /// assert_eq!(chroot.remove_directory(dir_name), true);
+    /// assert_eq!(chroot.remove_directory("i_dont_exist"), true);
+    /// # std::fs::remove_dir_all(&chroot_dir);
+    /// ```
+    pub fn remove_directory(&self, dir_path: impl Into<String>) -> bool {
+        let safe_dir_path: String = self.chrooted_path(dir_path);
+
+        match fs::exists(safe_dir_path.clone()) {
+            Ok(dir_exists) => {
+                if !dir_exists {
+                    return true;
+                }
+            }
+            Err(e) => {
+                error!("Failed to check if directory {safe_dir_path} exists: {e:?}");
+                return false;
+            }
+        }
+
+        match fs::remove_dir_all(safe_dir_path.clone()) {
+            Ok(_) => return true,
+            Err(e) => error!("Failed to delete directory {safe_dir_path}: {e}"),
         }
 
         false
@@ -599,6 +640,7 @@ impl Chroot {
     /// assert_eq!(chroot.make_executable(file_name), true);
     /// # std::fs::remove_dir_all(&chroot_dir);
     /// ```
+    #[allow(dead_code)]
     pub fn make_executable(&self, file_path: impl Into<String>) -> bool {
         // Make the file globally executable
         const UNIX_EXEC_FLAG: u32 = 1;
@@ -607,24 +649,18 @@ impl Chroot {
 
         match fs::metadata(safe_file_path.clone()) {
             Err(e) => {
-                error!(
-                    "Failed to get permissions for file {}: {}",
-                    safe_file_path, e
-                );
+                error!("Failed to get permissions for file {safe_file_path}: {e}");
             }
-            Ok(metadata) => {
+            Ok(_metadata) => {
                 #[cfg(unix)]
                 {
-                    let mut permissions = metadata.permissions();
+                    let mut permissions = _metadata.permissions();
                     let mode = permissions.mode() | UNIX_EXEC_FLAG;
                     permissions.set_mode(mode);
 
                     match fs::set_permissions(&safe_file_path, permissions) {
                         Err(e) => {
-                            error!(
-                                "Failed to set permissions for file {}: {}",
-                                safe_file_path, e
-                            );
+                            error!("Failed to set permissions for file {safe_file_path}: {e}");
                         }
                         Ok(_) => {
                             return true;
@@ -732,7 +768,7 @@ impl Chroot {
 
         // Add a '.' at the beginning of any paths that start with '/', e.g., '/tmp' -> './tmp'.
         if safe_target_rel_path.starts_with(path::MAIN_SEPARATOR) {
-            safe_target_rel_path = format!(".{}", safe_target_rel_path);
+            safe_target_rel_path = format!(".{safe_target_rel_path}");
         }
 
         // Replace any instances of '//' with '/'
@@ -750,10 +786,7 @@ impl Chroot {
             match unix::fs::symlink(safe_target_path, safe_symlink_path) {
                 Ok(_) => true,
                 Err(e) => {
-                    error!(
-                        "Failed to create symlink from {} -> {}: {}",
-                        symlink, target, e
-                    );
+                    error!("Failed to create symlink from {symlink} -> {target}: {e}");
                     false
                 }
             }
@@ -793,7 +826,7 @@ impl Chroot {
     fn strip_double_slash(&self, path: &str) -> String {
         let mut stripped_path = path.to_owned();
         let single_slash = path::MAIN_SEPARATOR.to_string();
-        let double_slash = format!("{}{}", single_slash, single_slash);
+        let double_slash = format!("{single_slash}{single_slash}");
 
         while stripped_path.contains(&double_slash) {
             stripped_path = stripped_path.replace(&double_slash, &single_slash);
@@ -979,8 +1012,7 @@ pub fn execute(
         if !result.success {
             if let Err(e) = fs::remove_dir_all(&output_directory) {
                 warn!(
-                    "Failed to clean up extraction directory {} after extraction failure: {}",
-                    output_directory, e
+                    "Failed to clean up extraction directory {output_directory} after extraction failure: {e}"
                 );
             }
         }
@@ -1004,15 +1036,13 @@ fn spawn(
         ExtractorType::External(cmd) => cmd.clone(),
         ExtractorType::Internal(_ext) => {
             error!("Tried to run an internal extractor as an external command!");
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "attempt to execute an internal extractor as an external command",
             ));
         }
         ExtractorType::None => {
             error!("An extractor command was defined, but is set to None!");
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "invalid external command of type None",
             ));
         }
@@ -1038,18 +1068,14 @@ fn spawn(
     // If the entirety of the source file is this one file type, no need to carve a copy of it, just create a symlink
     if signature.offset == 0 && signature.size == file_data.len() {
         if !chroot.create_symlink(&carved_file, file_path) {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "Failed to create carved file symlink",
             ));
         }
     } else {
         // Copy file data to carved file path
         if !chroot.carve_file(&carved_file, file_data, signature.offset, signature.size) {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Failed to carve data to disk",
-            ));
+            return Err(std::io::Error::other("Failed to carve data to disk"));
         }
     }
 
@@ -1099,7 +1125,7 @@ fn proc_wait(mut worker_info: ProcInfo) -> Result<ExtractionResult, ExtractionEr
     match worker_info.child.wait() {
         // Child was terminated from an external signal, status unknown, assume failure but do nothing else
         Err(e) => {
-            error!("Failed to retreive child process status: {}", e);
+            error!("Failed to retreive child process status: {e}");
             Err(ExtractionError)
         }
 
@@ -1128,7 +1154,7 @@ fn proc_wait(mut worker_info: ProcInfo) -> Result<ExtractionResult, ExtractionEr
                     if code == EXIT_SUCCESS || worker_info.exit_codes.contains(&code) {
                         extraction_success = true;
                     } else {
-                        warn!("Child process exited with unexpected code: {}", code);
+                        warn!("Child process exited with unexpected code: {code}");
                     }
                 }
             }
@@ -1154,12 +1180,14 @@ fn create_output_directory(file_path: &str, offset: usize) -> Result<String, std
         offset
     );
 
+    // First, remove the output directory if it exists from a previous run
+    if !chroot.remove_directory(&output_directory) {
+        return Err(std::io::Error::other("Directory deletion failed"));
+    }
+
     // Create the output directory, equivalent of mkdir -p
     if !chroot.create_directory(&output_directory) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Directory creation failed",
-        ));
+        return Err(std::io::Error::other("Directory creation failed"));
     }
 
     Ok(output_directory)
@@ -1169,13 +1197,13 @@ fn create_output_directory(file_path: &str, offset: usize) -> Result<String, std
 /// Note that any intermediate/carved files must be deleted *before* calling this function.
 fn was_something_extracted(output_directory: &str) -> bool {
     let output_directory_path = path::Path::new(output_directory);
-    debug!("Checking output directory {} for results", output_directory);
+    debug!("Checking output directory {output_directory} for results");
 
     // Walk the output directory looking for something, anything, that isn't an empty file
     for entry in WalkDir::new(output_directory).into_iter() {
         match entry {
             Err(e) => {
-                warn!("Failed to retrieve output directory entry: {}", e);
+                warn!("Failed to retrieve output directory entry: {e}");
                 continue;
             }
             Ok(entry) => {

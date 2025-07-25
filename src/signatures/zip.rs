@@ -1,5 +1,5 @@
 use crate::common::is_offset_safe;
-use crate::signatures::common::{SignatureError, SignatureResult, CONFIDENCE_HIGH};
+use crate::signatures::common::{CONFIDENCE_HIGH, SignatureError, SignatureResult};
 use crate::structures::zip::{parse_eocd_header, parse_zip_header};
 use aho_corasick::AhoCorasick;
 
@@ -68,8 +68,8 @@ pub fn zip_parser(file_data: &[u8], offset: usize) -> Result<SignatureResult, Si
             }
         }
 
-        // Only return success if the identified ZIP file is larger than the first ZIP file entry
-        if result.size > zip_file_header.total_size {
+        // Only return success if the ZIP file size was identified
+        if result.size > 0 {
             return Ok(result);
         }
     }

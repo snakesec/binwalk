@@ -1,7 +1,7 @@
 use crate::common::is_offset_safe;
 use crate::extractors::common::{Chroot, ExtractionResult, Extractor, ExtractorType};
 use crate::structures::vxworks::{
-    get_symtab_endianness, parse_symtab_entry, VxWorksSymbolTableEntry,
+    VxWorksSymbolTableEntry, get_symtab_endianness, parse_symtab_entry,
 };
 use log::error;
 use serde_json;
@@ -88,7 +88,7 @@ pub fn extract_symbol_table(
             match serde_json::to_string_pretty(&symtab_entries) {
                 // This should never happen...
                 Err(e) => {
-                    error!("Failed to convert VxWorks symbol table to JSON: {}", e);
+                    error!("Failed to convert VxWorks symbol table to JSON: {e}");
                 }
 
                 // Write JSON to file

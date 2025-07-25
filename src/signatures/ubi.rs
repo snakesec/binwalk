@@ -1,4 +1,4 @@
-use crate::signatures::common::{SignatureError, SignatureResult, CONFIDENCE_HIGH};
+use crate::signatures::common::{CONFIDENCE_HIGH, SignatureError, SignatureResult};
 use crate::structures::ubi::{
     parse_ubi_ec_header, parse_ubi_superblock_header, parse_ubi_volume_header,
 };
@@ -11,7 +11,7 @@ pub const UBI_IMAGE_DESCRIPTION: &str = "UBI image";
 
 /// Erase block magic bytes; header version is assumed to be 1
 pub fn ubi_magic() -> Vec<Vec<u8>> {
-    vec![b"UBI#\x01\x00\x00\x00".to_vec()]
+    vec![b"UBI#\x01".to_vec()]
 }
 
 /// UBI node magic; this matches *any* UBI node, but ubifs_parser ensures that only superblock nodes are reported
