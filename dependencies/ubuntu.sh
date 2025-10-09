@@ -40,7 +40,7 @@ dpkg -i sasquatch_1.0.deb
 rm sasquatch_1.0.deb
 
 # Install Python dependencies
-source ${SCRIPT_DIRECTORY}/pip.sh
+source "${SCRIPT_DIRECTORY}/pip.sh"
 
 # Install dependencies from source
-source ${SCRIPT_DIRECTORY}/src.sh
+source "${SCRIPT_DIRECTORY}/src.sh"
